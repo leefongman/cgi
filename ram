@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# 输出头信息
+echo -ne "Content-Type: text/plain\n\n"
+
+# 输出正文
+free | sed -n 2p | sed -r 's/^Mem:\s+//'

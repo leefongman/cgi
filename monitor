@@ -1,0 +1,32 @@
+#!/bin/bash
+
+fetch_cpu() {
+    uptime | awk '{print $NF,$(NF-1),$(NF-2)}' | sed 's/,//g'
+}
+
+fetch_ram() {
+    free | sed -n 2p | sed -r 's/^Mem:\s+//'
+}
+
+fetch_hd() {
+    df
+}
+
+# 输出头信息
+echo -ne "Content-Type: text/plain\n\n"
+
+# 输出正文
+if test -z "$QUERY_STRING"; then
+    cpu=$(fetch_cpu)
+    ram=$(fetch_ram)
+    hd=$(fetch_hd)
+    echo -ne "CPU: $cpu\nRAM: $ram\nHD: $hd\n"
+else
+    cate=$(sed -r 's/^.*cate=(.*).*$/\1/' <<<"$QUERY_STRING")
+    case "$cate" in
+        cpu) info=$(fetch_cpu) ;;
+        ram) info=$(fetch_ram) ;;
+        hd) info=$(fetch_hd) ;;
+    esac
+    echo -ne "$cate: $info\n"
+fi

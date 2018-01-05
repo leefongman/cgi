@@ -1,0 +1,13 @@
+#!/bin/bash
+
+tmpfile=$(mktemp)
+cat > $tmpfile
+name=$(head -n2 <$tmpfile | tail -n1 | sed -r 's/^.*filename="([^"]+)".*$/\1/')
+tail -n +4 $tmpfile | head -n -1 | head -c -2 > /tmp/upload/$name
+rm -f $tmpfile
+
+# 输出头信息
+echo -ne "Content-Type: text/plain\n\n"
+
+# 输出正文
+export

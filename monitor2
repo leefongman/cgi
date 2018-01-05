@@ -1,0 +1,105 @@
+#!/bin/bash
+
+source libs
+
+fetch_cpu() {
+    uptime | awk '{print $NF,$(NF-1),$(NF-2)}' | sed 's/,//g'
+}
+
+fetch_ram() {
+    free | sed -n 2p | sed -r 's/^Mem:\s+//'
+}
+
+fetch_hd() {
+    df
+}
+
+get_sid() {
+    echo "$HTTP_COOKIE" | sed -r 's/^.*sid=([0-9a-zA-Z]+).*$/\1/'
+}
+
+is_logged_in() {
+    local sid=$1
+    if test -z "$sid"; then
+        return 1
+    fi
+    session_file="$session_dir/$sid"
+    if test ! -f "$session_file"; then
+        return 1
+    fi
+    login_time=$(<$session_file)
+    now=$(date +%s)
+    diff=$((now - login_time))
+    if test "$diff" -lt 86400; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+update_login_status() {
+    local sid=$1
+    session_data=$(date +%s)
+    session_file="$session_dir/$sid"
+    echo "$session_data" > "$session_file"
+}
+
+sid=$(get_sid)
+if is_logged_in "$sid"; then
+    status=1
+    update_login_status "$sid"
+else
+    status=0
+fi
+
+# 输出头信息
+echo "Content-Type: text/html"
+echo
+
+# 输出正文
+if test -z "$QUERY_STRING"; then
+    cpu=$(fetch_cpu)
+    ram=$(fetch_ram)
+    hd=$(fetch_hd)
+    if test "$status" = 1; then
+        online_user=$(w)
+    else
+        online_user="Information not available, login required."
+    fi
+cat <<EOF
+<html>
+<body>
+  <h2>CPU</h2>
+  <p>$cpu</p>
+
+  <h2>RAM</h2>
+  <p>$ram</p>
+
+  <h2>HD</h2>
+  <p><pre>$hd</pre></p>
+
+  <h2>Online User</h2>
+  <p><pre>$online_user</pre></p>
+<pre>
+$status
+$(export)
+</pre>
+</body>
+</html>
+EOF
+else
+    cate=$(sed -r 's/^.*cate=(.*).*$/\1/' <<<"$QUERY_STRING")
+    case "$cate" in
+        cpu) info=$(fetch_cpu) ;;
+        ram) info=$(fetch_ram) ;;
+        hd) info=$(fetch_hd) ;;
+    esac
+cat <<EOF
+<html>
+<body>
+  <h2>$cate</h2>
+  <p><pre>$info</pre></p>
+</body>
+</html>
+EOF
+fi
